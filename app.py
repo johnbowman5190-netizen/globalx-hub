@@ -19,7 +19,6 @@ AIRPORTS = {
     "SPJC": {"name": "Lima Jorge Chávez Intl", "lat": -12.022, "lon": -77.114}, 
     "KSEA": {"name": "Seattle-Tacoma Intl", "lat": 47.449, "lon": -122.309},   
     "PANC": {"name": "Anchorage Stevens Intl", "lat": 61.174, "lon": -150.016},
-    "TEXP": {"name": "Hamilton Island", "lat": -20.353, "lon": 148.951},
     "EGLL": {"name": "London Heathrow", "lat": 51.470, "lon": -0.454},
     "MDPC": {"name": "Punta Cana Intl", "lat": 18.567, "lon": -68.363}
 }
@@ -57,6 +56,9 @@ CHARTER_PROFILES = [
 
 # --- MATH CORE ---
 def calculate_distance(orig, dest):
+    # Safe backup math check if typing custom unsaved airports like FDSK
+    if orig not in AIRPORTS or dest not in AIRPORTS:
+        return 0
     p1, p2 = AIRPORTS[orig], AIRPORTS[dest]
     lat1, lon1, lat2, lon2 = map(math.radians, [p1["lat"], p1["lon"], p2["lat"], p2["lon"]])
     a = math.sin((lat2-lat1)/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin((lon2-lon1)/2)**2
@@ -66,8 +68,7 @@ def generate_charter_board():
     contracts = []
     current_loc = st.session_state.get("aircraft_location", "KMIA")
     
-    # Attempting to generate a rich list of up to 10 options
-    for i in range(25): 
+    for i in range(30): 
         if len(contracts) >= 10:
             break
             
@@ -78,9 +79,6 @@ def generate_charter_board():
         client_dist = calculate_distance(orig, dest)
         ferry_dist = calculate_distance(current_loc, orig)
         
-        if client_dist > 4000:  # Range Cap expansion for global ports
-            continue 
-            
         client_time = round((client_dist / 440.0) + 0.3, 1)
         ferry_time = round((ferry_dist / 440.0) + 0.3, 1) if ferry_dist > 30 else 0
         pax_count = random.randint(40, 189)
@@ -145,15 +143,10 @@ if "board" not in st.session_state:
 # --- SIDEBAR CONTROL PANEL ---
 st.sidebar.title("✈️ N657NK Control")
 
-# Location selector fix
-airport_list = list(AIRPORTS.keys())
-selected_loc = st.sidebar.selectbox(
-    "Current Aircraft Location", 
-    options=airport_list, 
-    index=airport_list.index(st.session_state.aircraft_location)
-)
-if selected_loc != st.session_state.aircraft_location:
-    st.session_state.aircraft_location = selected_loc
+# Free text input for any global airport
+typed_loc = st.sidebar.text_input("Current Aircraft Location", value=st.session_state.aircraft_location).upper().strip()
+if typed_loc != st.session_state.aircraft_location and len(typed_loc) >= 3:
+    st.session_state.aircraft_location = typed_loc
     st.session_state.board = generate_charter_board()
     st.rerun()
 
@@ -167,7 +160,7 @@ if st.sidebar.button("🔄 Refresh Contract Board", use_container_width=True):
 # --- MAIN APP ROUTING ---
 if st.session_state.active_contract is None:
     st.header("Available Charter Contracts Desk")
-    st.write(f"Showing up to {len(st.session_state.board)} custom contracts departing from or pairing near your current hub.")
+    st.write(f"Showing up to {len(st.session_state.board)} custom contracts. Positioned at: `{st.session_state.aircraft_location}`")
     
     for job in st.session_state.board:
         with st.container(border=True):
@@ -175,7 +168,7 @@ if st.session_state.active_contract is None:
             st.caption(f"**ID:** `{job['id']}` | Airframe: `N657NK` (A321ceo)")
             st.write(f"🛣️ **Route:** `{job['origin']}` ➔ `{job['destination']}` ({job['client_dist']} NM)")
             
-            # Recalculate ferry leg reactively based on modern position selector
+            # Dynamic text calculation
             job['ferry_dist'] = calculate_distance(st.session_state.aircraft_location, job['origin'])
             job['ferry_time'] = round((job['ferry_dist'] / 440.0) + 0.3, 1) if job['ferry_dist'] > 30 else 0
             
@@ -206,4 +199,70 @@ else:
 
     with st.container(border=True):
         st.markdown("##### ⚙️ Configuration Profile")
-        st.write
+        st.write(f"💺 **Cabin Layout:** Fenix Two-Class (16F / 173Y)")
+        st.write(f"📦 **Payload:** {job['pax_count']} Passengers")
+        st.write(f"💼 **Cargo Load:** {job['cargo_weight']}k lbs")
+
+    sb_params = {
+        "airline": "GXA", "fltnum": job['id'], "type": "A321",
+        "orig": job['origin'], "dest": job['destination'],
+        "pax": str(job['pax_count']), "cargo": str(job['cargo_weight']),
+        "acts": "2", "type_of_flight": "N"
+    }
+    sb_url = "https://dispatch.simbrief.com/options?" + urllib.parse.urlencode(sb_params)
+    st.link_button("🚀 Generate SimBrief Flight Plan Package", sb_url, use_container_width=True)
+
+    st.markdown("---")
+    st.markdown("#### 💺 Mobile Cabin Map")
+    st.caption("Legend: 👑 First Class | 🔴 Occupied Economy | 💺 Empty Seat")
+    
+    seat_options = ["-- Select a Seat to Inspect Passenger Manifest --"]
+    
+    # Secure code-block rendering guarantees perfectly aligned columns on mobile screen
+    fc_text = "=== FIRST CLASS CABIN ===\n"
+    for r in range(1, 5):
+        row_str = f"Row {r}  "
+        for letter in ["A", "C"]:
+            sid = f"{r}{letter}"
+            if sid in st.session_state.manifest:
+                row_str += f"👑{letter} "
+                seat_options.append(f"Seat {sid}: {st.session_state.manifest[sid]['name']} ({st.session_state.manifest[sid]['role']})")
+            else:
+                row_str += f"💺{letter} "
+        row_str += "  [||]  "
+        for letter in ["D", "F"]:
+            sid = f"{r}{letter}"
+            if sid in st.session_state.manifest:
+                row_str += f"👑{letter} "
+                seat_options.append(f"Seat {sid}: {st.session_state.manifest[sid]['name']} ({st.session_state.manifest[sid]['role']})")
+            else:
+                row_str += f"💺{letter} "
+        fc_text += row_str + "\n"
+    st.code(fc_text, language="text")
+        
+    y_text = "=== ECONOMY CABIN ===\n"
+    for r in range(5, 34):
+        row_str = f"Row {r:02d} "
+        for letter in ["A", "B", "C"]:
+            sid = f"{r}{letter}"
+            if sid in st.session_state.manifest:
+                row_str += f"🔴{letter} "
+                seat_options.append(f"Seat {sid}: {st.session_state.manifest[sid]['name']} ({st.session_state.manifest[sid]['role']})")
+            else:
+                row_str += f"💺{letter} "
+        row_str += " [||] "
+        for letter in ["D", "E", "F"]:
+            sid = f"{r}{letter}"
+            if sid in st.session_state.manifest:
+                row_str += f"🔴{letter} "
+                seat_options.append(f"Seat {sid}: {st.session_state.manifest[sid]['name']} ({st.session_state.manifest[sid]['role']})")
+            else:
+                row_str += f"💺{letter} "
+        y_text += row_str + "\n"
+    st.code(y_text, language="text")
+        
+    st.markdown("---")
+    st.markdown("#### 📋 Passenger Manifest Inspector")
+    selected_seat_inspect = st.selectbox("Tap here to view passenger details:", options=seat_options)
+    if "-- Select a Seat" not in selected_seat_inspect:
+        st.info(f"📋 **Passenger Record:** {selected_seat_inspect}")
