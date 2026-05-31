@@ -21,7 +21,8 @@ AIRPORTS = {
     "PANC": {"name": "Anchorage Stevens Intl", "lat": 61.174, "lon": -150.016},
     "EGLL": {"name": "London Heathrow", "lat": 51.470, "lon": -0.454},
     "MDPC": {"name": "Punta Cana Intl", "lat": 18.567, "lon": -68.363},
-    "KABQ": {"name": "Albuquerque Sunport", "lat": 35.040, "lon": -106.609}
+    "KABQ": {"name": "Albuquerque Sunport", "lat": 35.040, "lon": -106.609},
+    "KRDU": {"name": "Raleigh-Durham Intl", "lat": 35.877, "lon": -78.787}
 }
 
 CHARTER_PROFILES = [
@@ -37,7 +38,7 @@ CHARTER_PROFILES = [
 # --- MATH CORE ---
 def calculate_distance(orig, dest):
     if orig not in AIRPORTS or dest not in AIRPORTS:
-        return random.randint(800, 2400) # Intelligent fallback distance if custom ICAO is missing coordinates
+        return random.randint(800, 2400)
     p1, p2 = AIRPORTS[orig], AIRPORTS[dest]
     lat1, lon1, lat2, lon2 = map(math.radians, [p1["lat"], p1["lon"], p2["lat"], p2["lon"]])
     a = math.sin((lat2-lat1)/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin((lon2-lon1)/2)**2
@@ -47,29 +48,23 @@ def generate_charter_board():
     contracts = []
     current_loc = st.session_state.get("aircraft_location", "KMIA")
     
-    # Generate 10 total dynamic contracts
     for i in range(10):
         profile = random.choice(CHARTER_PROFILES)
         
-        # Smart pairing: Force 60% of contracts to depart directly from wherever the user typed
+        # Force 60% of contracts to depart from current airport selection
         if i < 6:
             orig = current_loc
         else:
             orig = random.choice(list(AIRPORTS.keys()))
             
-        # Select target destination
         available_dests = [a for a in AIRPORTS.keys() if a != orig]
         dest = random.choice(available_dests) if available_dests else "KMIA"
         
         client_dist = calculate_distance(orig, dest)
-        ferry_dist = calculate_distance(current_loc, orig)
-        
-        client_time = round((client_dist / 440.0) + 0.3, 1)
-        ferry_time = round((ferry_dist / 440.0) + 0.3, 1) if ferry_dist > 30 else 0
         pax_count = random.randint(40, 189)
         
+        client_time = round((client_dist / 440.0) + 0.3, 1)
         cargo_weight = round(min(pax_count * 32, 7500) / 1000.0, 1)
-        payout = round((client_time * 7800) + (ferry_time * 4500))
         
         contracts.append({
             "id": f"GX{random.randint(100,999)}",
@@ -77,10 +72,7 @@ def generate_charter_board():
             "origin": orig,
             "destination": dest,
             "client_dist": client_dist,
-            "ferry_dist": ferry_dist,
             "client_time": client_time,
-            "ferry_time": ferry_time,
-            "payout": payout,
             "roles_pool": profile["roles"],
             "pax_count": pax_count,
             "cargo_weight": cargo_weight
@@ -146,7 +138,7 @@ if st.sidebar.button("🔄 Refresh Contract Board", use_container_width=True):
 # --- MAIN APP ROUTING ---
 if st.session_state.active_contract is None:
     st.header("Available Charter Contracts Desk")
-    st.write(f"Showing up to {len(st.session_state.board)} active missions linked to base tracking locator: `{st.session_state.aircraft_location}`")
+    st.write(f"Positioned at: `{st.session_state.aircraft_location}` | Tracking {len(st.session_state.board)} Contracts")
     
     for job in st.session_state.board:
         with st.container(border=True):
@@ -154,13 +146,15 @@ if st.session_state.active_contract is None:
             st.caption(f"**ID:** `{job['id']}` | Airframe: `N657NK` (A321ceo)")
             st.write(f"🛣️ **Route:** `{job['origin']}` ➔ `{job['destination']}` ({job['client_dist']} NM)")
             
-            job['ferry_dist'] = calculate_distance(st.session_state.aircraft_location, job['origin'])
-            job['ferry_time'] = round((job['ferry_dist'] / 440.0) + 0.3, 1) if job['ferry_dist'] > 30 else 0
-            
-            if job['ferry_time'] > 0:
-                st.warning(f"✈️ Ferry Required: {st.session_state.aircraft_location} ➔ {job['origin']} (+{job['ferry_time']}h)")
+            # STAGE CHECK FOR FERRY LEG
+            if st.session_state.aircraft_location == job['origin']:
+                st.success(f"✅ On-site at {job['origin']} - No Ferry Flight Needed")
+                job['payout'] = round(job['client_time'] * 7800)
             else:
-                st.success(f"✅ On-site at {job['origin']}")
+                ferry_dist = calculate_distance(st.session_state.aircraft_location, job['origin'])
+                ferry_time = round((ferry_dist / 440.0) + 0.3, 1)
+                st.warning(f"✈️ Ferry Required: {st.session_state.aircraft_location} ➔ {job['origin']} (+{ferry_time}h)")
+                job['payout'] = round((job['client_time'] * 7800) + (ferry_time * 4500))
                 
             st.markdown(f"**Payout:** ${job['payout']:,}")
             if st.button("Accept & Inspect Flight", key=job['id'], use_container_width=True):
@@ -200,89 +194,53 @@ else:
     st.link_button("🚀 Generate SimBrief Flight Plan Package", sb_url, use_container_width=True)
 
     st.markdown("---")
-    st.markdown("#### 💺 Interactive Cabin HUD")
-    st.caption("Tap any assigned colored seat below to pop open the passenger manifest details card instantly!")
+    st.markdown("#### 💺 Mobile Cabin Map")
+    st.caption("Legend: 👑 First Class | 🔴 Occupied Economy | 💺 Empty Seat")
     
-    # --- ACTIVE POP-UP MODAL CARD ---
+    # Pre-build seat options list for fallback mobile dropdown safety
+    seat_options = ["-- OR Inspect via Manifest Dropdown list --"]
+    for seat_id, p_data in sorted(st.session_state.manifest.items()):
+        seat_options.append(f"Seat {seat_id}: {p_data['name']} ({p_data['role']})")
+
+    # --- NATIVE PHONE LAYOUT POP-UP INFOCARD ---
     if st.session_state.selected_passenger:
         p_info = st.session_state.selected_passenger
-        with st.status(f"📋 Manifest Verified: Seat {p_info['seat']}", expanded=True, state="success"):
-            st.write(f"👤 **Passenger Name:** `{p_info['name']}`")
-            st.write(f"🎟️ **Manifest Assignment/Role:** {p_info['role']}")
-            st.write("✅ *Security Clearance Logged - Ready for Boarding Flight deck integration.*")
-            if st.button("Dismiss Card", use_container_width=True):
-                st.session_state.selected_passenger = None
-                st.rerun()
+        st.info(f"📋 **Passenger Record Card**\n\n**Seat:** `{p_info['seat']}`\n\n**Name:** `{p_info['name']}`\n\n**Assignment:** {p_info['role']}")
+        if st.button("Dismiss Passenger Details", use_container_width=True):
+            st.session_state.selected_passenger = None
+            st.rerun()
 
-    # --- FIRST CLASS GENERATOR ---
-    st.write("**First Class Cabin (Rows 1-4)**")
+    # --- ROCK SOLID PRE-FORMATTED LAYOUT BOX ---
+    fc_text = "=== FIRST CLASS RECLINERS ===\n"
     for r in range(1, 5):
-        c1, c2, c_aisle, c3, c4 = st.columns([1, 1, 0.6, 1, 1])
+        row_str = f"Row {r}  "
+        for letter in ["A", "C"]:
+            row_str += "👑" if f"{r}{letter}" in st.session_state.manifest else "💺"
+        row_str += "  [Aisle]  "
+        for letter in ["D", "F"]:
+            row_str += "👑" if f"{r}{letter}" in st.session_state.manifest else "💺"
+        fc_text += row_str + "\n"
         
-        # Seat A
-        sid_A = f"{r}A"
-        if sid_A in st.session_state.manifest:
-            if c1.button(f"👑 {sid_A}", key=f"btn_{sid_A}", use_container_width=True):
-                st.session_state.selected_passenger = {"seat": sid_A, **st.session_state.manifest[sid_A]}
-                st.rerun()
-        else:
-            c1.button(f"💺 {sid_A}", key=f"btn_{sid_A}", disabled=True, use_container_width=True)
-            
-        # Seat C
-        sid_C = f"{r}C"
-        if sid_C in st.session_state.manifest:
-            if c2.button(f"👑 {sid_C}", key=f"btn_{sid_C}", use_container_width=True):
-                st.session_state.selected_passenger = {"seat": sid_C, **st.session_state.manifest[sid_C]}
-                st.rerun()
-        else:
-            c2.button(f"💺 {sid_C}", key=f"btn_{sid_C}", disabled=True, use_container_width=True)
-
-        # Aisle
-        c_aisle.markdown(f"<p style='text-align:center;color:gray;font-size:12px;margin-top:6px;'>R{r}</p>", unsafe_allow_html=True)
-
-        # Seat D
-        sid_D = f"{r}D"
-        if sid_D in st.session_state.manifest:
-            if c3.button(f"👑 {sid_D}", key=f"btn_{sid_D}", use_container_width=True):
-                st.session_state.selected_passenger = {"seat": sid_D, **st.session_state.manifest[sid_D]}
-                st.rerun()
-        else:
-            c3.button(f"💺 {sid_D}", key=f"btn_{sid_D}", disabled=True, use_container_width=True)
-            
-        # Seat F
-        sid_F = f"{r}F"
-        if sid_F in st.session_state.manifest:
-            if c4.button(f"👑 {sid_F}", key=f"btn_{sid_F}", use_container_width=True):
-                st.session_state.selected_passenger = {"seat": sid_F, **st.session_state.manifest[sid_F]}
-                st.rerun()
-        else:
-            c4.button(f"💺 {sid_F}", key=f"btn_{sid_F}", disabled=True, use_container_width=True)
-
-    # --- ECONOMY CLASS GENERATOR ---
-    st.markdown("<br>**Economy Cabin (Rows 5-33)**", unsafe_allow_html=True)
+    y_text = "=== ECONOMY CABIN MAP ===\n"
     for r in range(5, 34):
-        c1, c2, c3, c_aisle, c4, c5, c6 = st.columns([1, 1, 1, 0.6, 1, 1, 1])
+        row_str = f"Row {r:02d}  "
+        for letter in ["A", "B", "C"]:
+            row_str += "🔴" if f"{r}{letter}" in st.session_state.manifest else "💺"
+        row_str += "  [||]  "
+        for letter in ["D", "E", "F"]:
+            row_str += "🔴" if f"{r}{letter}" in st.session_state.manifest else "💺"
+        y_text += row_str + "\n"
         
-        letters_left = ["A", "B", "C"]
-        cols_left = [c1, c2, c3]
-        for l, col in zip(letters_left, cols_left):
-            sid = f"{r}{l}"
-            if sid in st.session_state.manifest:
-                if col.button(f"🔴 {l}", key=f"btn_{sid}", use_container_width=True):
-                    st.session_state.selected_passenger = {"seat": sid, **st.session_state.manifest[sid]}
-                    st.rerun()
-            else:
-                col.button(f"💺 {l}", key=f"btn_{sid}", disabled=True, use_container_width=True)
-                
-        c_aisle.markdown(f"<p style='text-align:center;color:gray;font-size:11px;margin-top:6px;'>{r:02d}</p>", unsafe_allow_html=True)
+    # Render static perfectly aligned text grids
+    st.code(fc_text, language="text")
+    st.code(y_text, language="text")
         
-        letters_right = ["D", "E", "F"]
-        cols_right = [c4, c5, c6]
-        for l, col in zip(letters_right, cols_right):
-            sid = f"{r}{l}"
-            if sid in st.session_state.manifest:
-                if col.button(f"🔴 {l}", key=f"btn_{sid}", use_container_width=True):
-                    st.session_state.selected_passenger = {"seat": sid, **st.session_state.manifest[sid]}
-                    st.rerun()
-            else:
-                col.button(f"💺 {l}", key=f"btn_{sid}", disabled=True, use_container_width=True)
+    st.markdown("---")
+    st.markdown("#### 📋 Mobile Passenger Selector")
+    selected_seat_inspect = st.selectbox("Tap here to load a specific passenger file profile:", options=seat_options)
+    if "-- OR Inspect" not in selected_seat_inspect:
+        # Extract seat number from parsed selector label string
+        parsed_seat = selected_seat_inspect.split(":")[0].replace("Seat ", "").strip()
+        if parsed_seat in st.session_state.manifest:
+            st.session_state.selected_passenger = {"seat": parsed_seat, **st.session_state.manifest[parsed_seat]}
+            st.rerun()
