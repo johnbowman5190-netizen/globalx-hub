@@ -22,6 +22,7 @@ AIRPORTS = {
     "PANC": {"name": "Anchorage Stevens Intl", "lat": 61.174, "lon": -150.016, "region": "AMER"},
     "KABQ": {"name": "Albuquerque Sunport", "lat": 35.040, "lon": -106.609, "region": "AMER"},
     "KRDU": {"name": "Raleigh-Durham Intl", "lat": 35.877, "lon": -78.787, "region": "AMER"},
+    "KMSY": {"name": "Louis Armstrong New Orleans", "lat": 29.993, "lon": -90.258, "region": "AMER"},
     "EGLL": {"name": "London Heathrow", "lat": 51.470, "lon": -0.454, "region": "EUR"},
     "MDPC": {"name": "Punta Cana Intl", "lat": 18.567, "lon": -68.363, "region": "AMER"},
     "FDSK": {"name": "King Mswati III Intl", "lat": -26.357, "lon": 31.717, "region": "AFR"},
@@ -29,51 +30,61 @@ AIRPORTS = {
     "FACT": {"name": "Cape Town International", "lat": -33.964, "lon": 18.602, "region": "AFR"}
 }
 
-# --- ALL-SPORTS SEASONAL CONFIGURATOR ---
-def get_seasonal_sports_profile():
-    current_month = datetime.now().month
-    
-    # SUMMER PIPELINE (June, July, August)
-    if current_month in [6, 7, 8]:
-        return [
-            {"client": "Professional Baseball Club", "roles": ["Manager", "Starting Pitcher", "All-Star Outfielder", "Hitting Coach", "Bullpen Catcher", "Team Orthopedist", "Head Athletic Trainer"]},
-            {"client": "Professional Fastpitch Softball Team", "roles": ["Head Coach", "Ace Pitcher", "Infield Captain", "Dugout Coordinator", "Athletic Trainer"]},
-            {"client": "Elite Soccer Squad (Summer Pre-Season Tour)", "roles": ["Technical Director", "Winger", "Center Back", "Goalkeeper", "Physiotherapist", "Kit Manager", "Executive Chef"]},
-            {"client": "Track & Field National Championship Delegation", "roles": ["Head Coach", "Sprint Specialist", "High Jumper", "Relay Coordinator", "Massage Therapist", "Team Doctor"]},
-            {"client": "Collegiate Swimming & Diving Championship Team", "roles": ["Head Coach", "Freestyle Swimmer", "Platform Diver", "Assistant Coach", "Nutritionist"]}
-        ]
-    # SPRING PIPELINE (February, March, April, May)
-    elif current_month in [2, 3, 4, 5]:
-        return [
-            {"client": "NCAA Division 1 Basketball Team", "roles": ["Head Coach", "Point Guard", "Starting Center", "Assistant Coach", "Director of Basketball Ops", "Athletic Trainer", "Radio Play-by-Play"]},
-            {"client": "Professional Basketball Club", "roles": ["Head Coach", "All-Star Guard", "Power Forward", "Assistant Coach", "Video Coordinator", "Team Physio"]},
-            {"client": "Professional Hockey Club (NHL)", "roles": ["Head Coach", "Team Captain", "Goaltender", "Equipment Manager", "General Manager", "Physical Therapist", "Scouting Director"]},
-            {"client": "Collegiate Men's Lacrosse Team", "roles": ["Head Coach", "Lead Attacker", "Goalie", "Midfielder", "Defensive Coordinator", "Athletic Trainer"]},
-            {"client": "Professional Soccer Club (Regular Season)", "roles": ["Manager", "Striker", "Midfield Captain", "Goalkeeper coach", "Physiotherapist"]}
-        ]
-    # FALL/WINTER PIPELINE (September, October, November, December, January)
-    else:
-        return [
-            {"client": "NCAA Gridiron Football Team", "roles": ["Head Coach", "Quarterback", "Defensive Coordinator", "Linebacker", "Athletic Trainer", "Equipment Manager", "Booster Member"]},
-            {"client": "Professional Football Team", "roles": ["Head Coach", "Starting Quarterback", "Offensive Coordinator", "Special Teams Coordinator", "Head Athletic Trainer", "General Manager", "Media Liaison"]},
-            {"client": "Collegiate Women's Volleyball Team", "roles": ["Head Coach", "Outside Hitter", "Setter", "Libero", "Assistant Coach", "Team Trainer"]},
-            {"client": "Professional Soccer Club (Playoff Run)", "roles": ["Manager", "Designated Player", "Center Back", "Team Doctor", "PR Director"]}
-        ]
+# --- REAL WORLD REGIONAL & SEASONAL DISPATCH DATABANKS ---
+SPORTS_BY_SEASON = {
+    "SUMMER": { # June, July, August
+        "AMER": [
+            {"client": "New York Yankees (MLB)", "roles": ["Aaron Judge", "Gerrit Cole", "Manager Aaron Boone", "Hitting Coach", "Bullpen Catcher", "Team Orthopedist", "Head Athletic Trainer"]},
+            {"client": "Boston Red Sox (MLB)", "roles": ["Rafael Devers", "Starting Pitcher", "Manager Alex Cora", "First Base Coach", "Athletic Trainer", "Media Liaison"]},
+            {"client": "USSSA Pride Fastpitch", "roles": ["Head Coach", "Ace Pitcher", "Starting Catcher", "Infield Captain", "Team Trainer"]},
+            {"client": "Team USA Track & Field Delegation", "roles": ["Sprint Coach", "100m Sprinter", "High Jumper", "Relay Coordinator", "Team Physician", "Massage Therapist"]},
+            {"client": "Texas Longhorns Swimming (NCAA)", "roles": ["Head Coach", "Freestyle Sprinter", "Platform Diver", "Assistant Coach", "Nutritionist"]}
+        ],
+        "EUR": [
+            {"client": "Real Madrid CF (Summer US Tour)", "roles": ["Carlo Ancelotti", "Jude Bellingham", "Kylian Mbappé", "Physiotherapist", "Kit Manager", "Executive Chef", "Security Director"]},
+            {"client": "Manchester City FC (Pre-Season)", "roles": ["Pep Guardiola", "Erling Haaland", "Kevin De Bruyne", "Team Doctor", "PR Officer", "Logistics Coordinator"]}
+        ],
+        "AFR": [] # Tracked via corporate operations during local winter seasons
+    },
+    "SPRING": { # February, March, April, May
+        "AMER": [
+            {"client": "Duke Blue Devils Men's Basketball (NCAA)", "roles": ["Jon Scheyer", "Starting Point Guard", "Shooting Guard", "Director of Ops", "Athletic Trainer", "Radio Broadcaster"]},
+            {"client": "Carolina Hurricanes (NHL)", "roles": ["Rod Brind'Amour", "Team Captain", "Starting Goalie", "Equipment Manager", "General Manager", "Physical Therapist"]},
+            {"client": "Boston Bruins (NHL)", "roles": ["Head Coach", "Team Captain", "Starting Goaltender", "Equipment Manager", "Team Orthopedist", "Scouting Director"]},
+            {"client": "Virginia Cavaliers Lacrosse (NCAA)", "roles": ["Head Coach", "Lead Attacker", "Goalie", "Midfielder", "Defensive Coordinator", "Team Trainer"]}
+        ],
+        "EUR": [
+            {"client": "Arsenal FC (Premier League)", "roles": ["Mikel Arteta", "Bukayo Saka", "Martin Ødegaard", "Team Doctor", "Physiotherapist", "Media Liaison"]}
+        ],
+        "AFR": []
+    },
+    "FALL_WINTER": { # September to January
+        "AMER": [
+            {"client": "Alabama Crimson Tide Football (NCAA)", "roles": ["Head Coach", "Starting Quarterback", "Defensive Coordinator", "Linebacker", "Athletic Trainer", "Equipment Manager", "Booster Member"]},
+            {"client": "Miami Dolphins (NFL)", "roles": ["Mike McDaniel", "Tua Tagovailoa", "Tyreek Hill", "Defensive Coordinator", "Head Athletic Trainer", "General Manager", "PR Director"]},
+            {"client": "Dallas Cowboys (NFL)", "roles": ["Head Coach", "Starting Quarterback", "Offensive Coordinator", "Special Teams Coach", "Equipment Manager", "Media Liaison"]},
+            {"client": "Kentucky Wildcats Volleyball (NCAA)", "roles": ["Head Coach", "Outside Hitter", "Setter", "Libero", "Assistant Coach", "Team Trainer"]}
+        ],
+        "EUR": [],
+        "AFR": []
+    }
+}
 
 NON_SPORTS_PROFILES = {
     "AMER": [
-        {"client": "U.S. Government Logistics Charter", "roles": ["Logistics Commander", "Escort Officer", "Operations Chief", "Medical Coordinator", "Transport Liaison"]},
-        {"client": "Cruise Line Crew Rotation Contract", "roles": ["Ship Captain", "Chief Engineer", "Hotel Director", "Cruise Director", "Deckhand", "Executive Chef"]},
-        {"client": "Broadway Touring Production", "roles": ["Director", "Lead Actor", "Stage Manager", "Costume Designer", "Choreographer", "Audio Crew"]}
+        {"client": "FEMA Emergency Logistics Command", "roles": ["Logistics Commander", "Escort Officer", "Operations Chief", "Medical Coordinator", "Transport Liaison"]},
+        {"client": "Royal Caribbean Crew Rotation", "roles": ["Ship Captain", "Chief Engineer", "Hotel Director", "Cruise Director", "Deckhand", "Executive Chef"]},
+        {"client": "Carnival Cruise Line Crew Movement", "roles": ["Staff Captain", "First Engineer", "Entertainment Director", "Chef de Cuisine"]},
+        {"client": "Hamilton Broadway Touring Production", "roles": ["Company Director", "Lead Actor (Hamilton)", "Stage Manager", "Costume Designer", "Choreographer", "Audio Crew"]}
     ],
     "AFR": [
-        {"client": "Luxury Eco-Safari Expedition", "roles": ["Tour Director", "Expedition Leader", "VIP Client", "Wildlife Photographer", "Travel Coordinator"]},
-        {"client": "United Nations Humanitarian Mission", "roles": ["Envoy Chief", "Human Rights Officer", "Field Coordinator", "Press Secretary", "Security Detail"]},
-        {"client": "Global Mining Executive Summit", "roles": ["Chief Executive", "Geology Director", "Operations VP", "Legal Counsel", "Board Member"]}
+        {"client": "Singita Luxury Eco-Safari Expedition", "roles": ["Tour Director", "Expedition Leader", "VIP Lodge Guest", "Wildlife Photographer", "Travel Coordinator"]},
+        {"client": "United Nations Humanitarian Mission (WFP)", "roles": ["Envoy Chief", "Human Rights Officer", "Field Coordinator", "Press Secretary", "Security Detail"]},
+        {"client": "Anglo American Mining Corporate Summit", "roles": ["Chief Executive", "Geology Director", "Operations VP", "Legal Counsel", "Board Member"]}
     ],
     "EUR": [
-        {"client": "World Economic Forum Delegation", "roles": ["Delegate Chief", "Economic Advisor", "NGO Director", "Chief of Staff", "Security Analyst"]},
-        {"client": "VIP Arena Music Tour Production", "roles": ["Lead Vocalist", "Guitarist", "Tour Manager", "Audio Engineer", "VIP Guest", "Backstage Coordinator"]}
+        {"client": "World Economic Forum Delegation (Geneva)", "roles": ["Delegate Chief", "Economic Advisor", "NGO Director", "Chief of Staff", "Security Analyst"]},
+        {"client": "Coldplay Music Tour Production", "roles": ["Chris Martin", "Tour Manager", "Audio Engineer", "Lighting Director", "VIP Guest", "Backstage Coordinator"]}
     ]
 }
 
@@ -91,8 +102,15 @@ def generate_charter_board():
     current_loc = st.session_state.get("aircraft_location", "KMIA")
     current_region = AIRPORTS.get(current_loc, {"region": "AMER"})["region"]
     
-    sports_pool = get_seasonal_sports_profile()
-    
+    # Season calculation for May 31, 2026 -> Enters Summer Pipeline
+    current_month = datetime.now().month
+    if current_month in [6, 7, 8]:
+        season_key = "SUMMER"
+    elif current_month in [2, 3, 4, 5]:
+        season_key = "SPRING"
+    else:
+        season_key = "FALL_WINTER"
+        
     for i in range(10):
         if i < 6:
             orig = current_loc
@@ -101,14 +119,20 @@ def generate_charter_board():
             orig = random.choice(list(AIRPORTS.keys()))
             orig_region = AIRPORTS[orig]["region"]
             
-        # 50/50 balance split between high-priority Sports Charters and Regional Enterprise/Govt flights
-        if random.random() < 0.5:
+        # FORCE CROSS-CONTINENT DESTINATION SANITY (Sports stay in region)
+        sports_pool = SPORTS_BY_SEASON[season_key].get(orig_region, [])
+        
+        if sports_pool and random.random() < 0.5:
             profile = random.choice(sports_pool)
+            # Enforce domestic destination for sports teams to stop crazy transoceanic hops
+            available_dests = [a for a in AIRPORTS.keys() if a != orig and AIRPORTS[a]["region"] == orig_region]
+            if not available_dests:
+                available_dests = [a for a in AIRPORTS.keys() if a != orig]
         else:
             profile_pool = NON_SPORTS_PROFILES.get(orig_region, NON_SPORTS_PROFILES["AMER"])
             profile = random.choice(profile_pool)
-        
-        available_dests = [a for a in AIRPORTS.keys() if a != orig]
+            available_dests = [a for a in AIRPORTS.keys() if a != orig]
+            
         dest = random.choice(available_dests) if available_dests else "KMIA"
         
         client_dist = calculate_distance(orig, dest)
@@ -155,7 +179,7 @@ def generate_manifest(pax_count, roles_pool):
         manifest[seat] = {"name": f"{random.choice(first_names)} {random.choice(last_names)}", "role": f"⭐ First Class: {role}"}
         
     for seat in assigned_e:
-        role = random.choice(roles_pool) if (roles_pool and random.random() > 0.4) else "Passenger/Staff"
+        role = random.choice(roles_pool) if (roles_pool and random.random() > 0.4) else "Staff / Passenger"
         manifest[seat] = {"name": f"{random.choice(first_names)} {random.choice(last_names)}", "role": role}
         
     return manifest
@@ -189,7 +213,7 @@ if st.sidebar.button("🔄 Refresh Contract Board", use_container_width=True):
 # --- MAIN APP ROUTING ---
 if st.session_state.active_contract is None:
     st.header("Available Charter Contracts Desk")
-    st.write(f"Positioned at: `{st.session_state.aircraft_location}` | Current Sim Date: **{datetime.now().strftime('%B %Y')}**")
+    st.write(f"Positioned at: `{st.session_state.aircraft_location}` | Season Layout Active: **{datetime.now().strftime('%B %Y')}**")
     
     for job in st.session_state.board:
         with st.container(border=True):
@@ -242,7 +266,6 @@ else:
         st.markdown("##### ⚙️ Configuration Profile & Cabin Load Summary")
         st.write(f"💺 **First Class:** {f_total} / 16 Occupied (`👑`) | **{16 - f_total} Open** (`💺`)")
         st.write(f"🔴 **Economy Cabin:** {e_total} / 173 Occupied (`🔴`) | **{173 - e_total} Open** (`💺`)")
-        st.write(f"📦 **Payload Totals:** {job['pax_count']} Passengers Checked In | {job['cargo_weight']}k lbs Cargo Load")
 
     sb_params = {
         "airline": "GXA", "fltnum": job['id'], "type": "A321",
@@ -254,21 +277,11 @@ else:
     st.link_button("🚀 Generate SimBrief Flight Plan Package", sb_url, use_container_width=True)
 
     st.markdown("---")
-    st.markdown("#### 💺 Mobile Cabin Map")
-    st.caption("Legend: 👑 First Class | 🔴 Occupied Economy | 💺 Empty / Open Seat")
-    
-    seat_options = ["-- OR Inspect via Manifest Dropdown list --"]
-    for seat_id, p_data in sorted(st.session_state.manifest.items()):
-        seat_options.append(f"Seat {seat_id}: {p_data['name']} ({p_data['role']})")
+    st.markdown("#### 💺 Visual Cabin HUD Map")
+    st.caption("Legend: 👑 Occupied First Class | 🔴 Occupied Economy | 💺 Open Seat")
 
-    if st.session_state.selected_passenger:
-        p_info = st.session_state.selected_passenger
-        st.info(f"📋 **Passenger Record Card**\n\n**Seat:** `{p_info['seat']}`\n\n**Name:** `{p_info['name']}`\n\n**Assignment:** {p_info['role']}")
-        if st.button("Dismiss Passenger Details", use_container_width=True):
-            st.session_state.selected_passenger = None
-            st.rerun()
-
-    fc_text = "=== FIRST CLASS RECLINERS ===\n"
+    # Draw the static map
+    fc_text = "=== FIRST CLASS MAP ===\n"
     for r in range(1, 5):
         row_str = f"Row {r}  "
         for letter in ["A", "C"]:
@@ -288,14 +301,34 @@ else:
             row_str += "🔴" if f"{r}{letter}" in st.session_state.manifest else "💺"
         y_text += row_str + "\n"
         
-    st.code(fc_text, language="text")
-    st.code(y_text, language="text")
+    st.code(fc_text + "\n" + y_text, language="text")
         
-    st.markdown("---")
-    st.markdown("#### 📋 Mobile Passenger Selector")
-    selected_seat_inspect = st.selectbox("Tap here to load a specific passenger file profile:", options=seat_options)
-    if "-- OR Inspect" not in selected_seat_inspect:
-        parsed_seat = selected_seat_inspect.split(":")[0].replace("Seat ", "").strip()
-        if parsed_seat in st.session_state.manifest:
-            st.session_state.selected_passenger = {"seat": parsed_seat, **st.session_state.manifest[parsed_seat]}
-            st.rerun()
+    # --- INTERACTIVE PHONE TAPPING SECTOR (FIXED FOR MOBILE) ---
+    st.markdown("#### 🎯 Tappable Seat Inspector")
+    st.caption("Select a row and seat letter below to pull up that passenger's secure flight profile file details card:")
+    
+    col_row_sel, col_let_sel = st.columns(2)
+    with col_row_sel:
+        row_input = st.selectbox("Select Row Number:", options=list(range(1, 34)))
+    with col_let_sel:
+        letter_opts = ["A", "C", "D", "F"] if row_input <= 4 else ["A", "B", "C", "D", "E", "F"]
+        letter_input = st.selectbox("Select Seat Letter:", options=letter_opts)
+        
+    target_seat_key = f"{row_input}{letter_input}"
+    
+    if st.button(f"🔍 Inspect Seat {target_seat_key}", use_container_width=True):
+        if target_seat_key in st.session_state.manifest:
+            st.session_state.selected_passenger = {"seat": target_seat_key, **st.session_state.manifest[target_seat_key]}
+        else:
+            st.session_state.selected_passenger = {"seat": target_seat_key, "name": "No Passenger Found", "role": "Empty Seat / Unoccupied Assignment"}
+            
+    # --- DYNAMIC PASSENGER INFO POP-UP CARD ---
+    if st.session_state.selected_passenger:
+        p_info = st.session_state.selected_passenger
+        with st.container(border=True):
+            st.markdown(f"### 📋 Passenger File: Seat {p_info['seat']}")
+            st.write(f"👤 **Name:** `{p_info['name']}`")
+            st.write(f"🎟️ **Role/Manifest:** {p_info['role']}")
+            if st.button("Close File Card", use_container_width=True):
+                st.session_state.selected_passenger = None
+                st.rerun()
