@@ -10,7 +10,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- APPLICATION DATA BASE ---
+# --- APPLICATION DATA BASE (EXPANDED COORDINATES) ---
 AIRPORTS = {
     "KMIA": {"name": "Miami International", "lat": 25.793, "lon": -80.290},
     "KJFK": {"name": "John F. Kennedy Intl", "lat": 40.641, "lon": -73.778},
@@ -22,7 +22,10 @@ AIRPORTS = {
     "EGLL": {"name": "London Heathrow", "lat": 51.470, "lon": -0.454},
     "MDPC": {"name": "Punta Cana Intl", "lat": 18.567, "lon": -68.363},
     "KABQ": {"name": "Albuquerque Sunport", "lat": 35.040, "lon": -106.609},
-    "KRDU": {"name": "Raleigh-Durham Intl", "lat": 35.877, "lon": -78.787}
+    "KRDU": {"name": "Raleigh-Durham Intl", "lat": 35.877, "lon": -78.787},
+    "FDSK": {"name": "King Mswati III Intl", "lat": -26.357, "lon": 31.717},
+    "FAOR": {"name": "OR Tambo Intl (Joburg)", "lat": -26.139, "lon": 28.246},
+    "FACT": {"name": "Cape Town International", "lat": -33.964, "lon": 18.602}
 }
 
 CHARTER_PROFILES = [
@@ -32,13 +35,21 @@ CHARTER_PROFILES = [
     {"client": "Cruise Line Crew Rotation", "roles": ["Ship Captain", "Chief Engineer", "Hotel Director", "Cruise Director", "Deckhand", "Executive Chef"]},
     {"client": "VIP Music Tour Charter", "roles": ["Lead Vocalist", "Guitarist", "Tour Manager", "Audio Engineer", "VIP Guest", "Backstage Coordinator"]},
     {"client": "International Corporate Summit", "roles": ["Chief Executive", "VP of Operations", "Regional Director", "Keynote Speaker"]},
-    {"client": "Formula 1 Pit Crew", "roles": ["Team Principal", "Lead Driver", "Race Engineer", "Pit Mechanic", "Tire Specialist"]}
+    {"client": "Formula 1 Pit Crew", "roles": ["Team Principal", "Lead Driver", "Race Engineer", "Pit Mechanic", "Tire Specialist"]},
+    {"client": "Premier League Football Squad", "roles": ["Manager", "Star Striker", "Team Physiotherapist", "Nutritionist", "Media Officer", "Club Director"]},
+    {"client": "United Nations Humanitarian Delegation", "roles": ["Envoy Chief", "Human Rights Officer", "Field Coordinator", "Press Secretary", "Security Detail"]},
+    {"client": "Luxury Eco-Safari Tour Group", "roles": ["Tour Director", "Expedition Leader", "VIP Client", "Wildlife Photographer", "Travel Coordinator"]},
+    {"client": "High-End Destination Wedding", "roles": ["Groom", "Bride", "Best Man", "Maid of Honor", "Wedding Planner", "VIP Family Member"]},
+    {"client": "Tech Industry Product Launch Team", "roles": ["CEO", "Lead Hardware Engineer", "PR Director", "Product Manager", "Keynote Presenter"]},
+    {"client": "Broadway Show Touring Cast", "roles": ["Director", "Lead Actor", "Stage Manager", "Costume Designer", "Choreographer", "Audio Crew"]},
+    {"client": "Military R&R Transport Leg", "roles": ["Company Commander", "First Sergeant", "Platoon Leader", "Logistics Specialist", "Squad Leader"]},
+    {"client": "World Economic Forum Attendees", "roles": ["Delegate Chief", "Economic Advisor", "NGO Director", "Chief of Staff", "Security Analyst"]}
 ]
 
 # --- MATH CORE ---
 def calculate_distance(orig, dest):
     if orig not in AIRPORTS or dest not in AIRPORTS:
-        return random.randint(800, 2400)
+        return random.randint(3500, 6800) if (orig == "FDSK" or dest == "FDSK") else random.randint(800, 2400)
     p1, p2 = AIRPORTS[orig], AIRPORTS[dest]
     lat1, lon1, lat2, lon2 = map(math.radians, [p1["lat"], p1["lon"], p2["lat"], p2["lon"]])
     a = math.sin((lat2-lat1)/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin((lon2-lon1)/2)**2
@@ -48,8 +59,12 @@ def generate_charter_board():
     contracts = []
     current_loc = st.session_state.get("aircraft_location", "KMIA")
     
+    # Shuffle pools thoroughly to prevent back-to-back repeating groups
+    available_profiles = list(CHARTER_PROFILES)
+    random.shuffle(available_profiles)
+    
     for i in range(10):
-        profile = random.choice(CHARTER_PROFILES)
+        profile = available_profiles[i % len(available_profiles)]
         
         # Force 60% of contracts to depart from current airport selection
         if i < 6:
@@ -197,12 +212,10 @@ else:
     st.markdown("#### 💺 Mobile Cabin Map")
     st.caption("Legend: 👑 First Class | 🔴 Occupied Economy | 💺 Empty Seat")
     
-    # Pre-build seat options list for fallback mobile dropdown safety
     seat_options = ["-- OR Inspect via Manifest Dropdown list --"]
     for seat_id, p_data in sorted(st.session_state.manifest.items()):
         seat_options.append(f"Seat {seat_id}: {p_data['name']} ({p_data['role']})")
 
-    # --- NATIVE PHONE LAYOUT POP-UP INFOCARD ---
     if st.session_state.selected_passenger:
         p_info = st.session_state.selected_passenger
         st.info(f"📋 **Passenger Record Card**\n\n**Seat:** `{p_info['seat']}`\n\n**Name:** `{p_info['name']}`\n\n**Assignment:** {p_info['role']}")
@@ -210,7 +223,6 @@ else:
             st.session_state.selected_passenger = None
             st.rerun()
 
-    # --- ROCK SOLID PRE-FORMATTED LAYOUT BOX ---
     fc_text = "=== FIRST CLASS RECLINERS ===\n"
     for r in range(1, 5):
         row_str = f"Row {r}  "
@@ -231,7 +243,6 @@ else:
             row_str += "🔴" if f"{r}{letter}" in st.session_state.manifest else "💺"
         y_text += row_str + "\n"
         
-    # Render static perfectly aligned text grids
     st.code(fc_text, language="text")
     st.code(y_text, language="text")
         
@@ -239,7 +250,6 @@ else:
     st.markdown("#### 📋 Mobile Passenger Selector")
     selected_seat_inspect = st.selectbox("Tap here to load a specific passenger file profile:", options=seat_options)
     if "-- OR Inspect" not in selected_seat_inspect:
-        # Extract seat number from parsed selector label string
         parsed_seat = selected_seat_inspect.split(":")[0].replace("Seat ", "").strip()
         if parsed_seat in st.session_state.manifest:
             st.session_state.selected_passenger = {"seat": parsed_seat, **st.session_state.manifest[parsed_seat]}
